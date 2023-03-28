@@ -52,17 +52,12 @@ func ParseMetrics(configFile string) (*Metrics, error) {
 	return &metrics, nil
 }
 
-func ParseArgs(args []string) (*Metrics, *Config, error) {
-	flagset := flag.NewFlagSet("config", flag.ContinueOnError)
+func Parse() (*Metrics, *Config, error) {
 	listener := "0.0.0.0:2199"
-	flagset.StringVar(&listener, "listener", listener, "listener address and port")
+	flag.StringVar(&listener, "listener", listener, "listener address and port")
 	configFile := "config.yml"
-	flagset.StringVar(&configFile, "config", configFile, "configuration file")
-	err := flagset.Parse(args)
-	if err != nil {
-		fmt.Println("wrong parameters")
-		return nil, nil, err
-	}
+	flag.StringVar(&configFile, "config", configFile, "configuration file")
+	flag.Parse()
 	metrics, err := ParseMetrics(configFile)
 	return metrics, &Config{Listener: listener}, err
 }

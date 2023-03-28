@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	metrics, config, err := ParseArgs(os.Args)
+	metrics, config, err := Parse()
 	if err != nil {
 		os.Exit(2)
 	}
