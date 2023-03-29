@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: github-prometheus
+spec:
+  selector:
+    matchLabels:
+      app: github-prometheus
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: github-prometheus
+    spec:
+      containers:
+      - name: exporter
+        image: ghcr.io/gregoryguillou/github-prometheus:v0.1.1
+        command: 
+        - "/app/github-prometheus"
+        - "-config"
+        - "/tmp/config/config.yml"
+        ports:
+        - containerPort: 2199
+          name: prometheus
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "128m"
+        volumeMounts:
+        - mountPath: /tmp/config/
+          name: github-prometheus-config
+          readOnly: true
+      - name: app-token
+        image: ghcr.io/gregoryguillou/github-app-token:v0.1.0
+        ports:
+        - containerPort: 3000
+        env:
+        - name: APP_ID
+          valueFrom:
+            configMapKeyRef:
+              name: github-prometheus
+              key: app_id
+        - name: CLIENT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: github-prometheus
+              key: client_id
+        - name: CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: github-prometheus
+              key: client_secret
+        - name: PRIVATE_KEY_FILE
+          value: /tmp/certificates/private-key.pem
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "128m"
+        volumeMounts:
+        - mountPath: /tmp/certificates/
+          name: github-prometheus-private-key
+          readOnly: true
+      volumes:
+      - name: github-prometheus-private-key
+        secret:
+          secretName: github-prometheus
+          items:
+            - key: private_key
+              path: private-key.pem
+      - name: github-prometheus-config
+        configMap:
+          name: github-prometheus
+          items:
+            - key: config.yml
+              path: config.yml
