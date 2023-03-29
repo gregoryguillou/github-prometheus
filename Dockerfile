@@ -8,6 +8,5 @@ FROM alpine:3.17
 RUN apk add ca-certificates
 
 COPY --from=builder /app/out/github-prometheus /app/github-prometheus
-EXPOSE 8080
+EXPOSE 2199
 CMD ["/app/github-prometheus"]
-
