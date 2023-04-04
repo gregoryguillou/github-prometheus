@@ -30,7 +30,7 @@ type Metric struct {
 	Query    string       `yaml:"query"`
 	List     string       `yaml:"list"`
 	Labels   []NamedValue `yaml:"labels"`
-	Value    float64      `yaml:"value"`
+	Value    interface{}  `yaml:"value"`
 }
 
 type Metrics struct {
