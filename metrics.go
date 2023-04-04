@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -89,7 +90,19 @@ func mapToList(content []byte, listKey string) ([]map[string]interface{}, error)
 }
 
 // setGauges fill gaugevec with query based on labels
-func setGauges(gaugevec *prometheus.GaugeVec, data []map[string]interface{}, labels []NamedValue) error {
+func setGauges(gaugevec *prometheus.GaugeVec, data []map[string]interface{}, labels []NamedValue, value interface{}) error {
+	capturedValue := 1.0
+	switch v := value.(type) {
+	case int:
+		capturedValue = float64(v)
+	case int64:
+		capturedValue = float64(v)
+	case float64:
+		capturedValue = v
+	case string:
+	default:
+		return fmt.Errorf("unexpected type %T", value)
+	}
 	for _, iter := range data {
 		newLabels := prometheus.Labels{}
 		for _, w := range labels {
@@ -107,8 +120,28 @@ func setGauges(gaugevec *prometheus.GaugeVec, data []map[string]interface{}, lab
 			}
 			newLabels[w.Name] = fmt.Sprintf("%v", internalDataContent[internalKeys[len(internalKeys)-1]])
 		}
+		if v, ok := value.(string); ok {
+			internalKeys := strings.Split(v, ".")
+			internalDataContent := iter
+			for _, key := range internalKeys[:len(internalKeys)-1] {
+				internalData, ok := internalDataContent[key]
+				if !ok {
+					return fmt.Errorf("no data key")
+				}
+				internalDataContent, ok = internalData.(map[string]interface{})
+				if !ok {
+					return fmt.Errorf("no data content")
+				}
+			}
+			s := fmt.Sprintf("%v", internalDataContent[internalKeys[len(internalKeys)-1]])
+			var err error
+			capturedValue, err = strconv.ParseFloat(s, 64)
+			if err != nil {
+				return err
+			}
+		}
 		gauge, _ := gaugevec.GetMetricWith(newLabels)
-		gauge.Set(1)
+		gauge.Set(capturedValue)
 	}
 	return nil
 }
@@ -131,7 +164,7 @@ func runMetric(ctx context.Context, metric Metric, gaugevec *prometheus.GaugeVec
 	if err != nil {
 		return err
 	}
-	return setGauges(gaugevec, listData, metric.Labels)
+	return setGauges(gaugevec, listData, metric.Labels, metric.Value)
 }
 
 // runMetrics schedule the running of all the metrics and stop if one fails
